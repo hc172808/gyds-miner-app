@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GYDS Web Miner</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5; }
+    h1 { color: #4CAF50; }
+    #logs { margin-top: 20px; height: 200px; overflow-y: scroll; background: #fff; padding: 10px; border: 1px solid #ccc; }
+    button { margin-top: 10px; padding: 10px 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h1>GYDS Browser Miner</h1>
+  <p>Wallet Address: <span id="walletAddress">Loading...</span></p>
+  <p>GYDS Price: $<span id="price">0.00001</span></p>
+  <p>Balance: <span id="balance">0</span> GYDS</p>
+  <p>Mining Status: <span id="status">Idle</span></p>
+  <button id="startBtn">Start Mining</button>
+  <button id="stopBtn" disabled>Stop Mining</button>
+
+  <div id="logs"></div>
+
+  <script src="cpu_miner_engine.js"></script>
+  <script>
+    const wallet = new Wallet();
+    document.getElementById('walletAddress').innerText = wallet.address;
+
+    const miner = new MinerEngine(wallet.address);
+
+    const statusEl = document.getElementById('status');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const logs = document.getElementById('logs');
+    const priceEl = document.getElementById('price');
+    const balanceEl = document.getElementById('balance');
+
+    async function updatePriceAndBalance() {
+      const price = await miner.getPrice();
+      priceEl.innerText = price;
+      const balance = await miner.getBalance();
+      balanceEl.innerText = balance;
+    }
+
+    setInterval(updatePriceAndBalance, 5000);
+    updatePriceAndBalance();
+
+    startBtn.onclick = () => {
+      miner.start(block => {
+        logs.innerHTML += `<div>Block mined: ${block.hash} | Reward: ${block.reward}</div>`;
+        logs.scrollTop = logs.scrollHeight;
+      });
+      statusEl.innerText = 'Mining...';
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+    };
+
+    stopBtn.onclick = () => {
+      miner.stop();
+      statusEl.innerText = 'Idle';
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    };
+  </script>
+</body>
+</html>
