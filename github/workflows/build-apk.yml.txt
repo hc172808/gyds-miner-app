@@ -1,0 +1,73 @@
+name: Build GYDS Node
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  release:
+    types: [created]
+
+jobs:
+
+  build:
+    name: Build Full Node
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+
+      - name: Download Dependencies
+        run: go mod tidy
+
+      - name: Build Linux Binary
+        run: |
+          GOOS=linux GOARCH=amd64 go build -o build/gyds-node-linux ./cmd/main.go
+
+      - name: Build Windows Binary
+        run: |
+          GOOS=windows GOARCH=amd64 go build -o build/gyds-node-windows.exe ./cmd/main.go
+
+      - name: Build MacOS Binary
+        run: |
+          GOOS=darwin GOARCH=amd64 go build -o build/gyds-node-mac ./cmd/main.go
+
+      - name: Create Release Archives
+        run: |
+          cd build
+          zip gyds-node-linux.zip gyds-node-linux
+          zip gyds-node-windows.zip gyds-node-windows.exe
+          zip gyds-node-mac.zip gyds-node-mac
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: gyds-node-binaries
+          path: build/
+
+  publish-release:
+    name: Publish Release Assets
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: gyds-node-binaries
+          path: release/
+
+      - name: Upload Files to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
